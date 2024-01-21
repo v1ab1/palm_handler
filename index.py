@@ -6,6 +6,7 @@ from torchvision.models import resnet50
 from PIL import Image
 import pandas as pd
 from torchvision.models import resnet50, ResNet50_Weights
+from tqdm import tqdm
 
 class PalmDataset(Dataset):
     def __init__(self, csv_file, img_dir, transform=None):
@@ -21,18 +22,21 @@ class PalmDataset(Dataset):
         img_name = self.df.iloc[idx, 0]
         img_path = self.img_dir + "/" + img_name
         image = Image.open(img_path)
+        # Add angle value
+        angle = self.df.iloc[idx, 1]  
         label = self.label_map[self.df.iloc[idx, 2]]
         if self.transform:
             image = self.transform(image)
-        return image, label
+        return image, label, angle  # Return image, label, and angle
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.Grayscale(num_output_channels=3),  # Add this line
+    transforms.Grayscale(num_output_channels=3),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+num_epochs = 10
 
 trainset = PalmDataset(csv_file="data/train/label.csv", img_dir="data/train", transform=transform)
 trainloader = DataLoader(trainset, batch_size=32, shuffle=True)
@@ -40,32 +44,44 @@ trainloader = DataLoader(trainset, batch_size=32, shuffle=True)
 testset = PalmDataset(csv_file="data/test/label.csv", img_dir="data/test", transform=transform)
 testloader = DataLoader(testset, batch_size=32, shuffle=False)
 
-model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
-num_ftrs = model.fc.in_features
-model.fc = nn.Linear(num_ftrs, 2)
+# Create a model for angle regression
+model_angle = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+num_ftrs = model_angle.fc.in_features
+model_angle.fc = nn.Linear(num_ftrs, 1)
 
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+criterion_mse = nn.MSELoss()  # or nn.L1Loss() for MAE
+optimizer_angle = torch.optim.SGD(model_angle.parameters(), lr=0.001, momentum=0.9)
 
-num_epochs = 10  # Define the number of epochs
-
-# Training loop
+# Training loop for angle regression
 for epoch in range(num_epochs):
-    for images, labels in trainloader:
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+    for images, labels, angles in tqdm(trainloader):
+        outputs = model_angle(images)
+        loss = criterion_mse(outputs.view(-1), angles.float())  # MSE loss
         loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+        optimizer_angle.step()
+        optimizer_angle.zero_grad()
 
-# Testing loop
-correct = 0
+# Testing loop for angle regression
+total_error = 0
 total = 0
 with torch.no_grad():
-    for images, labels in testloader:
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+    for images, labels, angles in tqdm(testloader):
+        outputs = model_angle(images)
+        error = torch.abs(outputs.view(-1) - angles.float())  # Absolute error
+        total_error += error.sum().item()
+        total += angles.size(0)
 
-print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
+mae = total_error / total
+print(f'Accuracy: {mae}')
+
+checkpoint = {
+    'model_state_dict': model_angle.state_dict(),
+    'optimizer_state_dict': optimizer_angle.state_dict(),
+}
+
+# Путь, куда сохранить полное состояние
+checkpoint_file_path = "saved_angle_checkpoint.pth"
+
+# Сохранение состояния модели и оптимизатора
+torch.save(checkpoint, checkpoint_file_path)
+print(f"Состояние модели и оптимизатора сохранено в файл: {checkpoint_file_path}")
