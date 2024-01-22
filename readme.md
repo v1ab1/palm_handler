@@ -2,6 +2,10 @@
 
 ``` python3 getModal.py ```
 
+также можно скачать уже обученную модель и загрузить ее в директорюю проекта
+
+``` https://disk.yandex.ru/d/tnwWMmSHHxFqQg ```
+
 для проверки на своей картинке
 
 ``` python3 index.py ```
