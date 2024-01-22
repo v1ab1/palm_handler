@@ -6,7 +6,7 @@ from PIL import Image
 
 # Пути к файлам с чекпоинтами для обеих моделей
 checkpoint_file_angle_path = "saved_angle_checkpoint.pth"
-checkpoint_file_side_path = "saved_side_checkpoint.pth"
+checkpoint_file_side_path = "saved_angle_checkpoint.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 loaded_checkpoint_angle = torch.load(checkpoint_file_angle_path, map_location=device)
