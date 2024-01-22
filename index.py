@@ -38,9 +38,8 @@ def predict(model_angle, model_side, image_path, transform, label_map):
 
     return output_angle, side
 
-label_map = {0: "Правая", 1: "Левая"}
-
 while (True):
+    label_map = {0: "Правая", 1: "Левая"}
     image_path = input('Введите путь к картинке')
     angle, side = predict(model_angle, image_path, transform, label_map)
     print(f"Угол: {angle}")
