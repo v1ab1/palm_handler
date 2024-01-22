@@ -6,24 +6,17 @@ from PIL import Image
 
 # Пути к файлам с чекпоинтами для обеих моделей
 checkpoint_file_angle_path = "saved_angle_checkpoint.pth"
-checkpoint_file_side_path = "saved_angle_checkpoint.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 loaded_checkpoint_angle = torch.load(checkpoint_file_angle_path, map_location=device)
-loaded_checkpoint_side = torch.load(checkpoint_file_side_path, map_location=device)
 
 model_angle = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
-model_side = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
 num_ftrs = model_angle.fc.in_features
 model_angle.fc = nn.Linear(num_ftrs, 1)
-num_ftrs = model_side.fc.in_features
-model_side.fc = nn.Linear(num_ftrs, 2)
 
 model_angle.load_state_dict(loaded_checkpoint_angle['model_state_dict'])
-model_side.load_state_dict(loaded_checkpoint_side['model_state_dict'])
 
 model_angle.to(device).eval()
-model_side.to(device).eval()
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -49,6 +42,6 @@ label_map = {0: "Правая", 1: "Левая"}
 
 while (True):
     image_path = input('Введите путь к картинке')
-    angle, side = predict(model_angle, model_side, image_path, transform, label_map)
+    angle, side = predict(model_angle, image_path, transform, label_map)
     print(f"Угол: {angle}")
     print(f"Сторона: {side}")
