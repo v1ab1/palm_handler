@@ -4,7 +4,6 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 from PIL import Image
 
-# Пути к файлам с чекпоинтами для обеих моделей
 checkpoint_file_angle_path = "saved_angle_checkpoint.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,14 +24,14 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-def predict(model_angle, model_side, image_path, transform, label_map):
+def predict(model_angle, image_path, transform, label_map):
     image = Image.open(image_path)
     image = transform(image)
     image = image.unsqueeze(0).to(device)
 
     output_angle = model_angle(image).item()
 
-    output_side_probabilities = model_side(image)
+    output_side_probabilities = model_angle(image)
     _, predicted_side_index = torch.max(output_side_probabilities, 1)
     side = label_map[predicted_side_index.item()]
 
@@ -41,6 +40,6 @@ def predict(model_angle, model_side, image_path, transform, label_map):
 while (True):
     label_map = {0: "Правая", 1: "Левая"}
     image_path = input('Введите путь к картинке')
-    angle, side = predict(model_angle, model_angle, image_path, transform, label_map)
+    angle, side = predict(model_angle, image_path, transform, label_map)
     print(f"Угол: {angle}")
     print(f"Сторона: {side}")
